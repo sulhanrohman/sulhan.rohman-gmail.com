@@ -26,10 +26,11 @@ sudo -u postgres psql -c "CREATE USER $DB_USER WITH ENCRYPTED PASSWORD '$DB_PASS
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;"
 
 # 5. Application Setup
-echo "📦 Setting up application..."
-# Note: In a real server, you would git clone here
-# git clone https://github.com/sulhanrohman/notary.git
-# cd notary
+echo "📦 Setting up application in /var/www/html/notaris..."
+sudo mkdir -p /var/www/html/notaris
+# In your actual server, you would move files here or clone
+# sudo cp -r . /var/www/html/notaris
+# cd /var/www/html/notaris
 
 npm install
 npm run build
@@ -37,34 +38,36 @@ npm run build
 # 6. Install PM2 for process management
 sudo npm install -g pm2
 
-# 7. Start/Restart Application
-# For a SPA, we serve via Nginx, so we don't necessarily need PM2 for the front-end
-# but if you add a backend server.ts later, you'd use:
-# pm2 start ecosystem.config.js
+# 7. Start/Restart Application with PM2
+echo "🚀 Starting Node.js server with PM2..."
+pm2 delete notary || true
+# We use tsx to run the TypeScript server directly in production for ease of use
+pm2 start server.ts --name notary --interpreter $(which tsx)
 
-# 8. Configure Nginx
-echo "🌐 Configuring Nginx..."
+# 8. Configure Nginx as Reverse Proxy with SPA Fallback
+echo "🌐 Configuring Nginx for clients.ardigi.id..."
 cat <<EOF | sudo tee /etc/nginx/sites-available/notary
 server {
     listen 80;
-    server_name _; # Replace with your domain
+    server_name clients.ardigi.id;
 
-    root $(pwd)/dist;
+    root /var/www/html/notaris/dist;
     index index.html;
 
+    # Try to serve static files first (Frontend)
     location / {
         try_files \$uri \$uri/ /index.html;
     }
 
-    # API Proxy (future proofing)
-    # location /api {
-    #     proxy_pass http://localhost:3000;
-    #     proxy_http_version 1.1;
-    #     proxy_set_header Upgrade \$http_upgrade;
-    #     proxy_set_header Connection 'upgrade';
-    #     proxy_set_header Host \$host;
-    #     proxy_cache_bypass \$http_upgrade;
-    # }
+    # Proxy API requests to the Node.js server (Backend)
+    location /api {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+    }
 }
 EOF
 

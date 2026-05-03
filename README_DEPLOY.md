@@ -2,49 +2,28 @@
 
 This project is a bilingual (EN/ID) Banking Notary Dashboard.
 
-## Features
-- **Bilingual**: English and Bahasa Indonesia support.
-- **Role-based UI**: Different views for Notary (Admin) and Team Members.
-- **Workflow**: Task assignment (mock), result uploading, and approval/rejection cycle.
-- **Notifications**: Simulated email notifications and UI toasts.
-
 ## Deployment Instructions (Ubuntu 22.04)
 
-1. **Connect to your server** via SSH.
-2. **Transfer the files** or clone the repository (if already pushed):
-   ```bash
-   git clone https://github.com/sulhanrohman/notary.git
-   cd notary
-   ```
-3. **Run the deployment script**:
+1. **Setup Path**: Your application should live in `/var/www/html/notaris`.
+2. **Run Deployment**:
    ```bash
    chmod +x deploy.sh
    ./deploy.sh
    ```
-   *Note: Edit `deploy.sh` first to change the database password.*
 
-## GitHub Push Instructions
+## Why was port 3000 not running?
+If you just serve the `dist` folder via Nginx (static mode), port 3000 won't be active because the Node.js server hasn't been started. 
 
-To push this code to your repository `https://github.com/sulhanrohman/notary`, run these commands in your local terminal:
+To fix this:
+1. Ensure the `pm2 start` command in `deploy.sh` executes successfully.
+2. Check logs: `pm2 logs notary`.
+3. The new Nginx config I provided handles **both**:
+   - It serves your React app from `/dist` (super fast).
+   - It proxies any `/api` calls to the Node.js server on port 3000.
 
-```bash
-# Initialize git (if not already)
-git init
-
-# Add all files
-git add .
-
-# Commit
-git commit -m "feat: initial notary dashboard with bilingual support and deployment scripts"
-
-# Add remote
-git remote add origin https://github.com/sulhanrohman/notary.git
-
-# Push
-# You will need a Personal Access Token (PAT) for this
-git branch -M main
-git push -u origin main
-```
+## Troubleshooting 404
+- Ensure you have run `npm run build` so the `/var/www/html/notaris/dist` directory exists.
+- Ensure the Nginx user (`www-data`) has permission to read that directory.
 
 ## Tech Stack
 - **Frontend**: React + Vite + Tailwind CSS
