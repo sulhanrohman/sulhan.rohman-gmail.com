@@ -4,22 +4,25 @@ import { useAuth } from '../lib/MockContext';
 import { cn } from '../lib/utils';
 import { useTranslation } from 'react-i18next';
 
-export const Sidebar: React.FC = () => {
+interface SidebarProps {
+  activeTab: string;
+  onTabChange: (id: string) => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
   const { user, signOut } = useAuth();
   const { t } = useTranslation();
 
   const navItems = [
     { icon: LayoutDashboard, label: t('common.dashboard'), id: 'dashboard' },
-    { icon: CheckSquare, label: t('common.tasks'), id: 'tasks' },
-    { icon: ShieldCheck, label: t('common.approvals'), id: 'approvals', adminOnly: true },
     { icon: Users, label: t('common.team'), id: 'team', adminOnly: true },
     { icon: Settings, label: t('common.settings'), id: 'settings' },
   ];
 
   return (
-    <div className="w-64 bg-blue-900 text-white h-screen flex flex-col fixed left-0 top-0 border-r border-blue-800">
+    <div className="w-64 bg-slate-900 text-white h-screen flex flex-col fixed left-0 top-0 border-r border-slate-800">
       <div className="p-6 flex items-center gap-3">
-        <div className="w-8 h-8 bg-white/10 rounded flex items-center justify-center border border-white/20">
+        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
           <ShieldCheck className="w-5 h-5 text-white" />
         </div>
         <span className="font-bold text-lg tracking-tight">NotaryFlow</span>
@@ -28,14 +31,19 @@ export const Sidebar: React.FC = () => {
       <nav className="flex-1 px-4 py-4 space-y-1">
         {navItems.map((item) => {
           if (item.adminOnly && user?.role !== 'notary') return null;
+          const isActive = activeTab === item.id;
           return (
             <button
               key={item.id}
+              onClick={() => onTabChange(item.id)}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-blue-800 text-blue-200 hover:text-white"
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group",
+                isActive 
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-500/10" 
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
               )}
             >
-              <item.icon className="w-5 h-5" />
+              <item.icon className={cn("w-5 h-5", isActive ? "text-white" : "text-slate-400 group-hover:text-blue-400 transition-colors")} />
               {item.label}
             </button>
           );

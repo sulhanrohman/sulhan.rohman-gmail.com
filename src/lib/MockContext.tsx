@@ -15,29 +15,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock persistent login check
-    const savedUser = localStorage.getItem('mock_user');
+    const savedUser = localStorage.getItem('auth_user');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
     setLoading(false);
   }, []);
 
-  const signIn = (email: string) => {
-    const isNotary = email.includes('notary');
-    const newUser: User = {
-      id: isNotary ? '1' : '2',
-      name: isNotary ? 'John Notary' : 'Banking Agent Sarah',
-      email,
-      role: isNotary ? 'notary' : 'member',
-    };
-    setUser(newUser);
-    localStorage.setItem('mock_user', JSON.stringify(newUser));
+  const signIn = async (email: string) => {
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      if (res.ok) {
+        const userData = await res.json();
+        setUser(userData);
+        localStorage.setItem('auth_user', JSON.stringify(userData));
+      } else {
+        throw new Error('Login failed');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Login failed. Please check your credentials.');
+    }
   };
 
   const signOut = () => {
     setUser(null);
-    localStorage.removeItem('mock_user');
+    localStorage.removeItem('auth_user');
   };
 
   return (
@@ -53,65 +60,98 @@ export const useAuth = () => {
   return context;
 };
 
-// --- Mock Data Management ---
+// --- Real Data Management ---
 
 export const useTasks = () => {
-  const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [team, setTeam] = useState<User[]>([]);
+
+  const fetchTasks = async () => {
+    try {
+      const res = await fetch('/api/tasks');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setTasks(data);
+      } else {
+        console.error("Tasks API did not return an array:", data);
+        setTasks([]);
+      }
+    } catch (err) {
+      console.error(err);
+      setTasks([]);
+    }
+  };
+
+  const fetchTeam = async () => {
+    try {
+      const res = await fetch('/api/users');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setTeam(data);
+      } else {
+        console.error("Users API did not return an array:", data);
+        setTeam([]);
+      }
+    } catch (err) {
+      console.error(err);
+      setTeam([]);
+    }
+  };
 
   useEffect(() => {
-    const saved = localStorage.getItem('mock_tasks');
-    if (saved) {
-      setTasks(JSON.parse(saved));
-    } else {
-      const initial: Task[] = [
-        {
-          id: '1',
-          title: 'Mortgage Document Verification',
-          description: 'Verify the income statements for the new mortgage application #8821.',
-          assignedTo: '2',
-          assignedToName: 'Sarah Agent',
-          status: TaskStatus.PENDING,
-          createdAt: Date.now() - 86400000,
-          updatedAt: Date.now() - 86400000,
-          dueDate: Date.now() + 172800000,
-        },
-        {
-          id: '2',
-          title: 'Signature Certification - Bond #445',
-          description: 'Awaiting signature verification for the municipal bond document.',
-          assignedTo: '2',
-          assignedToName: 'Sarah Agent',
-          status: TaskStatus.UPLOADED,
-          createdAt: Date.now() - 43200000,
-          updatedAt: Date.now() - 10000,
-          dueDate: Date.now() + 86400000,
-          resultUrl: 'https://example.com/result.pdf',
-          resultNotes: 'Attached the scanned and verified document.',
-        }
-      ];
-      setTasks(initial);
-      localStorage.setItem('mock_tasks', JSON.stringify(initial));
-    }
+    fetchTasks();
+    fetchTeam();
   }, []);
 
-  const updateTask = (taskId: string, updates: Partial<Task>) => {
-    const newTasks = tasks.map(t => t.id === taskId ? { ...t, ...updates, updatedAt: Date.now() } : t);
-    setTasks(newTasks);
-    localStorage.setItem('mock_tasks', JSON.stringify(newTasks));
+  const updateTask = async (taskId: string, updates: Partial<Task>) => {
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      if (res.ok) fetchTasks();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const createTask = (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newTask: Task = {
-      ...task,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    const newTasks = [...tasks, newTask];
-    setTasks(newTasks);
-    localStorage.setItem('mock_tasks', JSON.stringify(newTasks));
+  const createTask = async (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(task)
+      });
+      if (res.ok) fetchTasks();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  return { tasks, updateTask, createTask };
+  const addTeamMember = async (member: { name: string, email: string, role?: string }) => {
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(member)
+      });
+      if (res.ok) fetchTeam();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const removeTeamMember = async (userId: string) => {
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) fetchTeam();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  return { tasks, team, updateTask, createTask, addTeamMember, removeTeamMember, refresh: fetchTasks };
 };

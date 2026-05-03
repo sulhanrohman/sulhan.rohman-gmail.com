@@ -24,6 +24,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Toaster, toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
+import { TeamManagement } from './components/TeamManagement';
+
 function Dashboard() {
   const { user, signIn } = useAuth();
   const { tasks, updateTask } = useTasks();
@@ -31,6 +33,29 @@ function Dashboard() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const { team, createTask } = useTasks();
+  const [taskData, setTaskData] = useState({ title: '', description: '', assignedTo: '', dueDate: '' });
+
+  const handleAssignTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const member = team.find(m => m.id === String(taskData.assignedTo));
+    if (!member) return;
+
+    await createTask({
+      title: taskData.title,
+      description: taskData.description,
+      assignedTo: String(taskData.assignedTo),
+      assignedToName: member.name,
+      status: TaskStatus.PENDING,
+      dueDate: new Date(taskData.dueDate).getTime()
+    });
+    
+    toast.success('Task assigned successfully');
+    setIsAssignModalOpen(false);
+    setTaskData({ title: '', description: '', assignedTo: '', dueDate: '' });
+  };
 
   const toggleLanguage = () => {
     const newLang = i18n.language === 'en' ? 'id' : 'en';
@@ -38,10 +63,10 @@ function Dashboard() {
   };
 
   const stats = [
-    { label: t('dashboard.totalTasks'), value: tasks.length, icon: FileStack, color: 'slate' as const },
-    { label: t('dashboard.pendingReview'), value: tasks.filter(t => t.status === TaskStatus.UPLOADED).length, icon: Clock, color: 'amber' as const },
-    { label: t('dashboard.completed'), value: tasks.filter(t => t.status === TaskStatus.APPROVED).length, icon: CheckCircle2, color: 'emerald' as const },
-    { label: t('dashboard.attentionNeeded'), value: tasks.filter(t => t.status === TaskStatus.REJECTED).length, icon: AlertCircle, color: 'blue' as const },
+    { label: t('dashboard.totalTasks'), value: (Array.isArray(tasks) ? tasks : []).length, icon: FileStack, color: 'slate' as const },
+    { label: t('dashboard.pendingReview'), value: (Array.isArray(tasks) ? tasks : []).filter(t => t.status === TaskStatus.UPLOADED).length, icon: Clock, color: 'amber' as const },
+    { label: t('dashboard.completed'), value: (Array.isArray(tasks) ? tasks : []).filter(t => t.status === TaskStatus.APPROVED).length, icon: CheckCircle2, color: 'emerald' as const },
+    { label: t('dashboard.attentionNeeded'), value: (Array.isArray(tasks) ? tasks : []).filter(t => t.status === TaskStatus.REJECTED).length, icon: AlertCircle, color: 'blue' as const },
   ];
 
   const handleTaskAction = (taskId: string) => {
@@ -154,10 +179,12 @@ function Dashboard() {
   return (
     <div className="min-h-screen pl-64 flex flex-col bg-slate-50">
       <Toaster richColors position="top-right" />
-      <Sidebar />
+      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
       
       <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10">
-        <h2 className="text-lg font-bold text-slate-800">{t('dashboard.header')}</h2>
+        <h2 className="text-lg font-bold text-slate-800">
+          {activeTab === 'dashboard' ? t('dashboard.header') : 'Team Management'}
+        </h2>
         <div className="flex items-center gap-4">
           <button 
             onClick={toggleLanguage}
@@ -166,6 +193,7 @@ function Dashboard() {
             <Globe className="w-3.5 h-3.5" />
             {i18n.language.toUpperCase()}
           </button>
+          
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input 
@@ -182,11 +210,11 @@ function Dashboard() {
             </button>
           </div>
 
-          <button className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
-            <Filter className="w-5 h-5" />
-          </button>
-          {user.role === 'notary' && (
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-sm">
+          {user.role === 'notary' && activeTab === 'dashboard' && (
+            <button 
+              onClick={() => setIsAssignModalOpen(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-sm"
+            >
               <Plus className="w-4 h-4" />
               {t('dashboard.assignTask')}
             </button>
@@ -196,31 +224,37 @@ function Dashboard() {
 
 
       <main className="flex-1 p-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, i) => (
-            <StatCard key={i} {...stat} />
-          ))}
-        </div>
-
-        <section className="space-y-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">{t('dashboard.activeQueue')}</h3>
-            <span className="text-xs font-medium text-slate-500">{tasks.length} total</span>
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <AnimatePresence mode="popLayout">
-              {tasks.map((task) => (
-                <TaskCard 
-                  key={task.id} 
-                  task={task} 
-                  onAction={handleTaskAction} 
-                  role={user.role} 
-                />
+        {activeTab === 'dashboard' ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {stats.map((stat, i) => (
+                <StatCard key={i} {...stat} />
               ))}
-            </AnimatePresence>
-          </div>
-        </section>
+            </div>
+
+            <section className="space-y-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">{t('dashboard.activeQueue')}</h3>
+                <span className="text-xs font-medium text-slate-500">{tasks.length} total</span>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <AnimatePresence mode="popLayout">
+                  {Array.isArray(tasks) && tasks.map((task) => (
+                    <TaskCard 
+                      key={task.id} 
+                      task={task} 
+                      onAction={handleTaskAction} 
+                      role={user.role} 
+                    />
+                  ))}
+                </AnimatePresence>
+              </div>
+            </section>
+          </>
+        ) : (
+          <TeamManagement />
+        )}
       </main>
 
       {/* Modal Overlay */}
@@ -342,6 +376,104 @@ function Dashboard() {
                   )}
                 </div>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Assign Task Modal */}
+      <AnimatePresence>
+        {isAssignModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAssignModalOpen(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <form onSubmit={handleAssignTask}>
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                  <h3 className="text-lg font-bold text-slate-900">Assign New Task</h3>
+                  <button type="button" onClick={() => setIsAssignModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Task Title</label>
+                    <input 
+                      required
+                      type="text" 
+                      value={taskData.title}
+                      onChange={(e) => setTaskData({...taskData, title: e.target.value})}
+                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
+                      placeholder="e.g. Verify Mortgage Application"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Description</label>
+                    <textarea 
+                      required
+                      value={taskData.description}
+                      onChange={(e) => setTaskData({...taskData, description: e.target.value})}
+                      className="w-full h-24 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all resize-none"
+                      placeholder="Details about the work..."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase">Assign To</label>
+                      <select 
+                        required
+                        value={taskData.assignedTo}
+                        onChange={(e) => setTaskData({...taskData, assignedTo: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
+                      >
+                        <option value="">Select Member</option>
+                        {Array.isArray(team) && team.filter(m => m.role === 'member').map(member => (
+                          <option key={member.id} value={member.id}>{member.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase">Due Date</label>
+                      <input 
+                        required
+                        type="date" 
+                        value={taskData.dueDate}
+                        onChange={(e) => setTaskData({...taskData, dueDate: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 border-t border-slate-100 flex gap-3 justify-end">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsAssignModalOpen(false)}
+                    className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition shadow-sm"
+                  >
+                    Assign Task
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}
