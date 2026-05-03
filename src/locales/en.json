@@ -1,0 +1,41 @@
+{
+  "common": {
+    "dashboard": "Dashboard",
+    "tasks": "Tasks",
+    "approvals": "Approvals",
+    "team": "Team",
+    "settings": "Settings",
+    "signOut": "Sign Out",
+    "cancel": "Cancel",
+    "review": "Review",
+    "details": "Details",
+    "submit": "Submit result",
+    "approve": "Approve",
+    "reject": "Reject",
+    "status": "Status"
+  },
+  "dashboard": {
+    "header": "Operational Dashboard",
+    "activeQueue": "Active Task Queue",
+    "assignTask": "Assign Task",
+    "totalTasks": "Total Tasks",
+    "pendingReview": "Pending Review",
+    "completed": "Completed",
+    "attentionNeeded": "Attention Needed"
+  },
+  "login": {
+    "title": "Banking Notary Dashboard",
+    "subtitle": "Sign in to manage your team's notary tasks",
+    "asNotary": "Sign in as Notary (Admin)",
+    "asMember": "Sign in as Team Member",
+    "secureEnv": "Secure Banking Environment"
+  },
+  "modal": {
+    "description": "Description",
+    "submittedResults": "Submitted Results",
+    "reviewComments": "Review Comments",
+    "submissionNotes": "Submission Notes",
+    "placeholderReview": "Provide feedback or instructions...",
+    "placeholderSubmission": "Describe the modifications or work done..."
+  }
+}

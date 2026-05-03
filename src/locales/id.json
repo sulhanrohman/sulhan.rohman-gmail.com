@@ -1,0 +1,41 @@
+{
+  "common": {
+    "dashboard": "Dasbor",
+    "tasks": "Tugas",
+    "approvals": "Persetujuan",
+    "team": "Tim",
+    "settings": "Pengaturan",
+    "signOut": "Keluar",
+    "cancel": "Batal",
+    "review": "Tinjau",
+    "details": "Detail",
+    "submit": "Kirim hasil",
+    "approve": "Setujui",
+    "reject": "Tolak",
+    "status": "Status"
+  },
+  "dashboard": {
+    "header": "Dasbor Operasional",
+    "activeQueue": "Antrean Tugas Aktif",
+    "assignTask": "Tugaskan",
+    "totalTasks": "Total Tugas",
+    "pendingReview": "Menunggu Tinjauan",
+    "completed": "Selesai",
+    "attentionNeeded": "Perlu Perhatian"
+  },
+  "login": {
+    "title": "Dasbor Notaris Perbankan",
+    "subtitle": "Masuk untuk mengelola tugas notaris tim Anda",
+    "asNotary": "Masuk sebagai Notaris (Admin)",
+    "asMember": "Masuk sebagai Anggota Tim",
+    "secureEnv": "Lingkungan Kerja Perbankan Aman"
+  },
+  "modal": {
+    "description": "Deskripsi",
+    "submittedResults": "Hasil yang Dikirim",
+    "reviewComments": "Komentar Tinjauan",
+    "submissionNotes": "Catatan Pengiriman",
+    "placeholderReview": "Berikan umpan balik atau instruksi...",
+    "placeholderSubmission": "Jelaskan modifikasi atau pekerjaan yang dilakukan..."
+  }
+}
