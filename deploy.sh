@@ -26,58 +26,64 @@ sudo -u postgres psql -c "CREATE USER $DB_USER WITH ENCRYPTED PASSWORD '$DB_PASS
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;"
 
 # 5. Application Setup
-echo "📦 Setting up application in /var/www/html/notaris..."
-sudo mkdir -p /var/www/html/notaris
-# In your actual server, you would move files here or clone
-# sudo cp -r . /var/www/html/notaris
-# cd /var/www/html/notaris
+PROJECT_ROOT="/var/www/html/notaris"
+echo "📦 Setting up application in $PROJECT_ROOT..."
+sudo mkdir -p "$PROJECT_ROOT"
 
+# CRITICAL: Copy the source files to the deployment directory
+echo "📂 Copying files to $PROJECT_ROOT..."
+sudo cp -r . "$PROJECT_ROOT/"
+sudo chown -R $USER:$USER "$PROJECT_ROOT"
+
+cd "$PROJECT_ROOT"
+
+echo "Installing local dependencies..."
 npm install
-npm run build
 
-# 6. Install PM2 for process management
-sudo npm install -g pm2
+echo "🏗️ Building Frontend and Server..."
+npm run build
 
 # 7. Start/Restart Application with PM2
 echo "🚀 Starting Node.js server with PM2..."
 pm2 delete notary || true
-# We use tsx to run the TypeScript server directly in production for ease of use
-pm2 start server.ts --name notary --interpreter $(which tsx)
 
-# 8. Configure Nginx as Reverse Proxy with SPA Fallback
-echo "🌐 Configuring Nginx for clients.ardigi.id..."
-cat <<EOF | sudo tee /etc/nginx/sites-available/notary
-server {
-    listen 80;
-    server_name clients.ardigi.id;
+# Now we run the COMPILED dist/server.js
+# This eliminates the need for tsx/ts-node in production
+NODE_ENV=production pm2 start dist/server.js --name notary --log-date-format "YYYY-MM-DD HH:mm:ss"
 
-    root /var/www/html/notaris/dist;
-    index index.html;
+pm2 save
 
-    # Try to serve static files first (Frontend)
-    location / {
-        try_files \$uri \$uri/ /index.html;
-    }
+# Wait for startup
+echo "⏳ Waiting for server to initialize..."
+sleep 5
 
-    # Proxy API requests to the Node.js server (Backend)
-    location /api {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_cache_bypass \$http_upgrade;
-    }
-}
-EOF
+# 8. Check if port 3000 is alive
+echo "🔍 Checking port 3000..."
+if sudo netstat -tulpn | grep :3000 > /dev/null; then
+    echo "✅ SUCCESS: Port 3000 is LISTENING!"
+else
+    echo "❌ ERROR: Port 3000 is STILL NOT LISTENING."
+    echo "📜 RECENT LOGS:"
+    pm2 logs notary --lines 30 --no-daemon & 
+    LOG_PID=$!
+    sleep 3
+    kill $LOG_PID 2>/dev/null || true
+fi
 
-sudo ln -sf /etc/nginx/sites-available/notary /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo nginx -t
-sudo systemctl restart nginx
-
-echo "✅ Deployment complete! App is running."
-echo "🔗 Database Info:"
-echo "   Name: $DB_NAME"
-echo "   User: $DB_USER"
-echo "   Pass: $DB_PASS"
+# 9. Simplified Nginx Configuration Recommendation
+echo "--------------------------------------------------------"
+echo "🌐 RECOMMENDED NGINX CONFIG FOR clients.ardigi.id"
+echo "--------------------------------------------------------"
+echo "Your Express server now handles BOTH static files and API."
+echo "You only need one proxy block in your Nginx SSL config:"
+echo ""
+echo "    location / {"
+echo "        proxy_pass http://localhost:3000;"
+echo "        proxy_http_version 1.1;"
+echo "        proxy_set_header Upgrade \$http_upgrade;"
+echo "        proxy_set_header Connection 'upgrade';"
+echo "        proxy_set_header Host \$host;"
+echo "        proxy_cache_bypass \$http_upgrade;"
+echo "    }"
+echo "--------------------------------------------------------"
+echo "✅ Deployment finished!"

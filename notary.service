@@ -1,0 +1,25 @@
+[Unit]
+Description=Notary Banking Dashboard Node.js Server
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/html/notaris
+# We use tsx to run the TypeScript server directly
+# Alternatively, compile to JS and use 'node dist/server.js'
+ExecStart=/usr/bin/npx tsx server.ts
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=notary-app
+Environment=NODE_ENV=production
+Environment=PORT=3000
+# Add your DB variables here if not using defaults
+Environment=DB_NAME=notary_db
+Environment=DB_USER=notary_user
+Environment=DB_PASS=secure_password_change_me
+
+[Install]
+WantedBy=multi-user.target
